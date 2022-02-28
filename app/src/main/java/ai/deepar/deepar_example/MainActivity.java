@@ -6,6 +6,7 @@ import ai.deepar.ar.CameraResolutionPreset;
 import ai.deepar.ar.DeepAR;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -25,7 +26,9 @@ import android.util.Size;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RadioButton;
@@ -37,6 +40,7 @@ import com.amazonaws.ivs.broadcast.BroadcastException;
 import com.amazonaws.ivs.broadcast.BroadcastSession;
 import com.amazonaws.ivs.broadcast.Device;
 import com.amazonaws.ivs.broadcast.ImageDevice;
+import com.amazonaws.ivs.broadcast.Presets;
 import com.amazonaws.ivs.broadcast.SurfaceSource;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -55,7 +59,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.lifecycle.LifecycleOwner;
 import ai.deepar.ar.DeepARImageFormat;
 
-public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, AREventListener {
+public class MainActivity extends AppCompatActivity implements AREventListener {
 
     // Default camera lens value, change to CameraSelector.LENS_FACING_BACK to initialize with back camera
     private int defaultLensFacing = CameraSelector.LENS_FACING_FRONT;
@@ -95,9 +99,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private final String INGEST_SERVER = "copy_from_ivs_console";
     private final String STREAM_KEY = "copy_from_ivs_console";
 
-    private ImageView offscreenImage;
-
-    private SurfaceView arView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -185,14 +186,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         final RadioButton radioMasks = findViewById(R.id.masks);
         final RadioButton radioEffects = findViewById(R.id.effects);
         final RadioButton radioFilters = findViewById(R.id.filters);
-
-        arView = (SurfaceView)findViewById(R.id.surface);
-
-        arView.getHolder().addCallback(this);
-
-        // Surface might already be initialized, so we force the call to onSurfaceChanged
-        arView.setVisibility(View.GONE);
-        arView.setVisibility(View.VISIBLE);
 
         ImageButton switchCamera = findViewById(R.id.switchCamera);
         switchCamera.setOnClickListener(new View.OnClickListener() {
@@ -340,6 +333,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         deepAR = new DeepAR(this);
         deepAR.setLicenseKey("your_licence_key_here");      // **************************** YOUR LICENCE KEY GOES HERE ****************************
         deepAR.initialize(this, this);
+        setupIVS();
         setupCamera();
     }
 
@@ -359,7 +353,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     private void bindImageAnalysis(@NonNull ProcessCameraProvider cameraProvider) {
-        CameraResolutionPreset cameraResolutionPreset = CameraResolutionPreset.P1920x1080;
+        CameraResolutionPreset cameraResolutionPreset = CameraResolutionPreset.P1280x720;
         int width;
         int height;
         int orientation = getScreenOrientation();
@@ -511,27 +505,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         broadcastSession.release();
     }
 
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        // If we are using on screen rendering we have to set surface view where DeepAR will render
-//        deepAR.setRenderSurface(holder.getSurface(), width, height);
-        this.width = width;
-        this.height = height;
-
-        deepAR.setRenderSurface(holder.getSurface(), width, height);
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        if (deepAR != null) {
-            deepAR.setRenderSurface(null, 0, 0);
-        }
-    }
-
     public void setupIVS() {
         broadcastListener = new BroadcastSession.Listener() {
             @Override
@@ -557,48 +530,41 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         int finalStreamingHeight = streamingHeight;
         broadcastConfig = BroadcastConfiguration.with($ -> {
             $.video.setSize(finalStreamingWidth, finalStreamingHeight);
+            $.mixer.slots = new BroadcastConfiguration.Mixer.Slot[] {
+              BroadcastConfiguration.Mixer.Slot.with(slot -> {
+                  slot.setPreferredVideoInput(Device.Descriptor.DeviceType.USER_IMAGE);
+                  slot.setPreferredAudioInput(Device.Descriptor.DeviceType.MICROPHONE);
+                  slot.setName("custom");
+                  return slot;
+              })
+            };
             return $;
         });
 
-        for(Device.Descriptor desc : BroadcastSession.listAvailableDevices(getApplicationContext())) {
-            if(desc.type == Device.Descriptor.DeviceType.MICROPHONE) {
-                microphone = desc;
-                break;
-            }
-        }
 
-        Device.Descriptor[] devices = {microphone};
-        broadcastSession = new BroadcastSession(getApplicationContext(), broadcastListener, broadcastConfig, devices);
+        broadcastSession = new BroadcastSession(this, broadcastListener, broadcastConfig, Presets.Devices.MICROPHONE(this));
 
         surfaceSource = broadcastSession.createImageInputSource();
         if(!surfaceSource.isValid()) {
             throw new IllegalStateException("Amazon IVS surface not valid!");
         }
-        surfaceSource.setSize(width, height);
+        surfaceSource.setSize(streamingWidth, streamingHeight);
         surfaceSource.setRotation(ImageDevice.Rotation.ROTATION_0);
         surface = surfaceSource.getInputSurface();
 
 //        BroadcastConfiguration.Mixer.Slot slot = new BroadcastConfiguration.Mixer.Slot();
 //        broadcastSession.getMixer().addSlot()
 
-        boolean success = broadcastSession.getMixer().bind(surfaceSource, "default");
+        boolean success = broadcastSession.getMixer().bind(surfaceSource, "custom");
 
-        deepAR.setCaptureSurface2(surface, width, height);
+        deepAR.setRenderSurface(surface, streamingWidth, streamingHeight);
 
-        if(streamRunning) {
-            broadcastSession.stop();
-        }
-        else {
-            try {
-                broadcastSession.start(INGEST_SERVER, STREAM_KEY);
-            }
-            catch (BroadcastException e) {
-                android.util.Log.d("IVS ERROR", e.getDetail());
-                int i = 0;
-            }
-        }
+        TextureView view = broadcastSession.getPreviewView(BroadcastConfiguration.AspectMode.FIT);
 
-        streamRunning =  !streamRunning;
+        ConstraintLayout layout = (ConstraintLayout) findViewById(R.id.rootLayout);
+        layout.addView(view, 0);
+
+        broadcastSession.start(INGEST_SERVER, STREAM_KEY);
     }
 
     @Override
@@ -650,13 +616,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         deepAR.switchEffect("mask", getFilterPath(masks.get(currentMask)));
         deepAR.switchEffect("effect", getFilterPath(effects.get(currentEffect)));
         deepAR.switchEffect("filter", getFilterPath(filters.get(currentFilter)));
-
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                setupIVS();
-            }
-        }, 1000);
     }
 
     @Override
