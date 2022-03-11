@@ -155,10 +155,8 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         masks.add("tripleface");
         masks.add("sleepingmask");
         masks.add("fatify");
-        masks.add("obama");
         masks.add("mudmask");
         masks.add("pug");
-        masks.add("slash");
         masks.add("twistedface");
         masks.add("grumpycat");
         masks.add("Helmet_PBR_V1");
