@@ -513,6 +513,12 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         }
         deepAR.release();
         deepAR = null;
+
+        if(streamRunning) {
+            broadcastSession.stop();
+            streamRunning = false;
+        }
+        broadcastSession.release();
         super.onStop();
     }
 
@@ -531,8 +537,14 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
 
         if(streamRunning) {
             broadcastSession.stop();
+            streamRunning = false;
         }
         broadcastSession.release();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
     }
 
     public void setupIVS() {
@@ -595,6 +607,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         layout.addView(view, 0);
 
         broadcastSession.start(INGEST_SERVER, STREAM_KEY);
+        streamRunning = true;
     }
 
     @Override
