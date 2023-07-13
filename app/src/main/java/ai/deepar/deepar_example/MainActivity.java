@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
     private ByteBuffer[] buffers;
     private int currentBuffer = 0;
     private static final int NUMBER_OF_BUFFERS=2;
-    private static final boolean useExternalCameraTexture = true;
+    private static final boolean useExternalCameraTexture = false;
 
     private DeepAR deepAR;
 
@@ -351,7 +351,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
     }
 
     private void bindImageAnalysis(@NonNull ProcessCameraProvider cameraProvider) {
-        CameraResolutionPreset cameraResolutionPreset = CameraResolutionPreset.P1280x720;
+        CameraResolutionPreset cameraResolutionPreset = CameraResolutionPreset.P640x480;
         int width;
         int height;
         int orientation = getScreenOrientation();
