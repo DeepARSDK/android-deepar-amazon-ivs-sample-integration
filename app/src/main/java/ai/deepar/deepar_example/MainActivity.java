@@ -4,6 +4,7 @@ import ai.deepar.ar.ARErrorType;
 import ai.deepar.ar.AREventListener;
 import ai.deepar.ar.CameraResolutionPreset;
 import ai.deepar.ar.DeepAR;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -24,15 +25,10 @@ import android.text.format.DateFormat;
 import android.util.DisplayMetrics;
 import android.util.Size;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.RadioButton;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.amazonaws.ivs.broadcast.BroadcastConfiguration;
@@ -50,13 +46,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
 
 import androidx.camera.core.*;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.lifecycle.LifecycleOwner;
+
 import ai.deepar.ar.DeepARImageFormat;
 
 public class MainActivity extends AppCompatActivity implements AREventListener {
@@ -68,14 +63,14 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private ByteBuffer[] buffers;
     private int currentBuffer = 0;
-    private static final int NUMBER_OF_BUFFERS=2;
+    private static final int NUMBER_OF_BUFFERS = 2;
     private static final boolean useExternalCameraTexture = false;
 
     private DeepAR deepAR;
 
-    private int currentMask=0;
-    private int currentEffect=0;
-    private int currentFilter=0;
+    private int currentMask = 0;
+    private int currentEffect = 0;
+    private int currentFilter = 0;
 
     private int screenOrientation;
 
@@ -112,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
                 ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
 
-            ActivityCompat.requestPermissions(this, new String[]{ Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO },
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO},
                     1);
         } else {
             // Permission has already been granted
@@ -123,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,  String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == 1 && grantResults.length > 0) {
             for (int grantResult : grantResults) {
                 if (grantResult != PackageManager.PERMISSION_GRANTED) {
@@ -163,9 +158,9 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
 
         effects = new ArrayList<>();
         effects.add("none");
-        effects.add("fire");
+        effects.add("fire.deepar");
         effects.add("rain");
-        effects.add("heart");
+        effects.add("heart.deepar");
         effects.add("blizzard");
 
         filters = new ArrayList<>();
@@ -189,7 +184,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         switchCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                lensFacing = lensFacing ==  CameraSelector.LENS_FACING_FRONT ?  CameraSelector.LENS_FACING_BACK :  CameraSelector.LENS_FACING_FRONT ;
+                lensFacing = lensFacing == CameraSelector.LENS_FACING_FRONT ? CameraSelector.LENS_FACING_BACK : CameraSelector.LENS_FACING_FRONT;
                 //unbind immediately to avoid mirrored frame.
                 ProcessCameraProvider cameraProvider = null;
                 try {
@@ -281,7 +276,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
                 || rotation == Surface.ROTATION_180) && height > width ||
                 (rotation == Surface.ROTATION_90
                         || rotation == Surface.ROTATION_270) && width > height) {
-            switch(rotation) {
+            switch (rotation) {
                 case Surface.ROTATION_0:
                     orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
                     break;
@@ -304,7 +299,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         // if the device's natural orientation is landscape or if the device
         // is square:
         else {
-            switch(rotation) {
+            switch (rotation) {
                 case Surface.ROTATION_0:
                     orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
                     break;
@@ -327,6 +322,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
 
         return orientation;
     }
+
     private void initializeDeepAR() {
         deepAR = new DeepAR(this);
         deepAR.setLicenseKey("your_licence_key_here");      // **************************** YOUR LICENCE KEY GOES HERE ****************************
@@ -355,9 +351,9 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         int width;
         int height;
         int orientation = getScreenOrientation();
-        if (orientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE || orientation ==ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE){
+        if (orientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE || orientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
             width = cameraResolutionPreset.getWidth();
-            height =  cameraResolutionPreset.getHeight();
+            height = cameraResolutionPreset.getHeight();
         } else {
             width = cameraResolutionPreset.getHeight();
             height = cameraResolutionPreset.getWidth();
@@ -366,14 +362,14 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         Size cameraResolution = new Size(width, height);
         CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(lensFacing).build();
 
-        if(useExternalCameraTexture) {
+        if (useExternalCameraTexture) {
             Preview preview = new Preview.Builder()
                     .setTargetResolution(cameraResolution)
                     .build();
 
             cameraProvider.unbindAll();
-            cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
-            if(surfaceProvider == null) {
+            cameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, preview);
+            if (surfaceProvider == null) {
                 surfaceProvider = new ARSurfaceProvider(this, deepAR);
             }
             preview.setSurfaceProvider(surfaceProvider);
@@ -391,7 +387,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
                     .build();
             imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), imageAnalyzer);
             cameraProvider.unbindAll();
-            cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, imageAnalysis);
+            cameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, imageAnalysis);
         }
     }
 
@@ -507,14 +503,14 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        if(surfaceProvider != null) {
+        if (surfaceProvider != null) {
             surfaceProvider.stop();
             surfaceProvider = null;
         }
         deepAR.release();
         deepAR = null;
 
-        if(streamRunning) {
+        if (streamRunning) {
             broadcastSession.stop();
             streamRunning = false;
         }
@@ -525,7 +521,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(surfaceProvider != null) {
+        if (surfaceProvider != null) {
             surfaceProvider.stop();
         }
         if (deepAR == null) {
@@ -535,7 +531,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         deepAR.release();
         deepAR = null;
 
-        if(streamRunning) {
+        if (streamRunning) {
             broadcastSession.stop();
             streamRunning = false;
         }
@@ -563,7 +559,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         int streamingWidth = 720;
         int streamingHeight = 1280;
 
-        if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             streamingWidth = 1280;
             streamingHeight = 720;
         }
@@ -572,13 +568,13 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         int finalStreamingHeight = streamingHeight;
         broadcastConfig = BroadcastConfiguration.with($ -> {
             $.video.setSize(finalStreamingWidth, finalStreamingHeight);
-            $.mixer.slots = new BroadcastConfiguration.Mixer.Slot[] {
-              BroadcastConfiguration.Mixer.Slot.with(slot -> {
-                  slot.setPreferredVideoInput(Device.Descriptor.DeviceType.USER_IMAGE);
-                  slot.setPreferredAudioInput(Device.Descriptor.DeviceType.MICROPHONE);
-                  slot.setName("custom");
-                  return slot;
-              })
+            $.mixer.slots = new BroadcastConfiguration.Mixer.Slot[]{
+                    BroadcastConfiguration.Mixer.Slot.with(slot -> {
+                        slot.setPreferredVideoInput(Device.Descriptor.DeviceType.USER_IMAGE);
+                        slot.setPreferredAudioInput(Device.Descriptor.DeviceType.MICROPHONE);
+                        slot.setName("custom");
+                        return slot;
+                    })
             };
             return $;
         });
@@ -587,7 +583,7 @@ public class MainActivity extends AppCompatActivity implements AREventListener {
         broadcastSession = new BroadcastSession(this, broadcastListener, broadcastConfig, Presets.Devices.MICROPHONE(this));
 
         surfaceSource = broadcastSession.createImageInputSource();
-        if(!surfaceSource.isValid()) {
+        if (!surfaceSource.isValid()) {
             throw new IllegalStateException("Amazon IVS surface not valid!");
         }
         surfaceSource.setSize(streamingWidth, streamingHeight);
